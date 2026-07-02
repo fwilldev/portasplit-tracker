@@ -10,7 +10,7 @@ export default function Header({ checking, onCheck, onSettings }) {
           </div>
           <div>
             <h1 className="text-lg font-extrabold tracking-tight text-slate-900 leading-none">PortaSplit&nbsp;Tracker</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Midea PortaSplit &amp; PortaSplit Cool</p>
+            <p className="text-xs text-slate-500 mt-0.5">Verfügbarkeitstracker für die Midea PortaSplit & PortaSplit Cool</p>
           </div>
         </div>
 

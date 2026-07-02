@@ -7,6 +7,9 @@ sobald ein Gerät verfügbar wird. Läuft als kleine Spring-Boot-App mit eingeba
 > Inoffizielles, nicht-kommerzielles Hobby-Projekt. Keine Zugehörigkeit zu oder Kooperation mit den
 > genannten Händlern/Marken - alle Marken- und Produktnamen gehören ihren jeweiligen Inhabern.
 
+<a href='https://ko-fi.com/J3G820LBTF' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+
+
 ## Was es kann
 
 - Prüft **OBI, toom, Bauhaus, Hornbach, Globus** (Filialen + Online-Shop) sowie **Amazon**, **Lidl**
@@ -31,8 +34,8 @@ cp .env.example .env      # Telegram-Werte eintragen, siehe unten
 docker compose up -d --build
 ```
 
-Startet die App **und** den CloakBrowser (für Amazon/Lidl/Bauhaus/kleinanzeigen). Dashboard danach
-unter **http://localhost:8080**.
+Startet die App **und** den CloakBrowser. Dashboard danach
+unter **http://localhost:8080** verfügbar.
 
 ### Lokal mit Maven
 
@@ -42,8 +45,8 @@ mvn spring-boot:run
 ```
 
 Dashboard unter **http://localhost:8080**, SQLite-Datei landet automatisch unter `./data/portasplit.db`.
-Amazon/Lidl/Bauhaus/kleinanzeigen benötigen zusätzlich einen laufenden CloakBrowser
-(`docker compose up -d cloakbrowser`).
+Zusätzlich wird Cloakbrowser benötigt:
+`docker compose up -d cloakbrowser`.
 
 ## Telegram einrichten
 
@@ -62,4 +65,3 @@ Amazon/Lidl/Bauhaus/kleinanzeigen benötigen zusätzlich einen laufenden CloakBr
 
 Weitere Einstellungen (Shops, Radius, Amazon/Lidl/kleinanzeigen-URLs, Ports, …) stehen in
 `local.properties.example` bzw. `src/main/resources/application.yml`.
-# portasplit-tracker

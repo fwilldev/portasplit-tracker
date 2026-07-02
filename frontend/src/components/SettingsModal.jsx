@@ -331,7 +331,7 @@ export default function SettingsModal({
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-500">Zentrum (PLZ)</span>
                     <input value={plz} onChange={(e) => setPlz(e.target.value)} inputMode="numeric"
-                      placeholder={radius?.centerLabel || 'z. B. 56410'}
+                      placeholder={radius?.centerLabel || 'z. B. 10176'}
                       className="mt-1 w-full rounded-lg bg-white ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-400 outline-none px-3 py-2 text-sm text-slate-700" />
                   </label>
                   <label className="block">
