@@ -50,6 +50,12 @@ Zusätzlich wird Cloakbrowser benötigt:
 
 ## Konfiguration
 
+### Kleinanzeigen
+
+Um Kleinanzeigen zu prüfen, muss ein gültiger Suchlink in Kleinanzeigen erstellt werden.
+
+Dazu am besten "portasplit" o.Ä. in Kleinanzeigen suchen, Umkreis einstellen und den Link in den Eintellungen speichern. Der Bot wird automatisch aktiv und listet entsprechende Inserate im Dashboard.
+
 ### Telegram
 
 1. Bei [@BotFather](https://t.me/BotFather) einen Bot anlegen → **Bot-Token** kopieren.
