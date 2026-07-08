@@ -37,6 +37,16 @@ public class ToomStockClient implements ChainStockClient {
             Product.PORTASPLIT, "10272593",
             Product.PORTASPLIT_COOL, "10515238");
 
+    /**
+     * Canonical online article pages (the real slug URLs, as still recorded in the reference data). toom's
+     * short {@code /p/_/{sap}} link 301-redirects to its slug while the product is listed and answers a
+     * hard 404 once it is delisted, so probing it tells us whether the article page still exists at all -
+     * independently of the per-market pickup API, which keeps reporting in-store stock for a delisted item.
+     */
+    private static final Map<Product, String> ONLINE_URLS = Map.of(
+            Product.PORTASPLIT, "https://toom.de/p/mobiles-klimageraet-portasplit-12000-btuh/9350668",
+            Product.PORTASPLIT_COOL, "https://toom.de/p/split-klimaanlage-portasplit-cool-8000btuh/10515238");
+
     private final RestClient restClient;
     private final ObjectMapper mapper;
     private final AppProperties props;
@@ -134,18 +144,35 @@ public class ToomStockClient implements ChainStockClient {
     }
 
     /**
-     * toom's own online shop has no directly scrapable availability signal: the SPA product page
-     * answers 404 for the bare {@code /p/_/{sap}} URL and carries no schema.org {@code Offer}, and the
-     * public buyboxcases API only reports per-market pickup stock - not nationwide online delivery.
-     * This override therefore returns <em>not-observed</em> for each product (state is never flipped,
-     * last known value kept) and logs the limitation, so the gap is an explicit, documented decision
-     * rather than a silent omission.
+     * toom's own online shop has no scrapable <em>availability</em> signal (the SPA PDP carries no
+     * schema.org {@code Offer}, and the public buyboxcases API reports only per-market pickup stock). It
+     * does, however, let us verify the <em>article page still exists</em>: we probe the product's canonical
+     * URL and, on a hard 404/410, report it as delisted ("online nicht gelistet") so the dashboard raises
+     * the "Artikelseite gibt es nicht mehr" warning even while the pickup API still shows in-store stock.
+     * Otherwise (page reachable, or the probe was inconclusive) we keep the last known state (not-observed).
      */
     @Override
     public List<ChainReading> checkOnline(Shop onlineShop, List<String> errors) {
         List<ChainReading> readings = new ArrayList<>();
         for (Product product : Product.values()) {
-            readings.add(new ChainReading(onlineShop.getId(), product, AvailabilitySnapshot.notObserved()));
+            String url = ONLINE_URLS.get(product);
+            int status = -1;
+            if (url != null) {
+                try {
+                    status = ChainHttp.statusOf(restClient, url);
+                } catch (Exception e) {
+                    log.debug("toom article-page probe failed for {}: {}", product, e.getMessage());
+                    errors.add(onlineShop.getName() + " / " + product.displayName() + ": " + e.getMessage());
+                }
+            }
+            if (ChainJsonLd.isGoneStatus(status)) {
+                jobLog.info("toom: Artikelseite für {} nicht mehr erreichbar (HTTP {})", product.displayName(), status);
+                readings.add(new ChainReading(onlineShop.getId(), product, new AvailabilitySnapshot(
+                        true, true, false, null, null, url, System.currentTimeMillis(),
+                        "online " + ChainJsonLd.NOT_LISTED_MARK)));
+            } else {
+                readings.add(new ChainReading(onlineShop.getId(), product, AvailabilitySnapshot.notObserved()));
+            }
         }
         return readings;
     }

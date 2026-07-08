@@ -30,6 +30,14 @@ public class HornbachStockClient implements ChainStockClient {
     private static final int SEED = 8282;
     private static final String SEARCH_PATH = "/s/Midea%20PortaSplit";
     private static final String SEARCH_URL = "https://www.hornbach.de" + SEARCH_PATH;
+    /**
+     * The Midea PortaSplit's canonical Hornbach article page. Hornbach answers a <em>soft</em> 404 for a
+     * delisted article (HTTP 200 with a "Seite nicht gefunden" page and no product data), so we probe this
+     * page and treat a not-found render as "article page gone" - and use it as the product link shown on
+     * the dashboard, instead of the generic search page.
+     */
+    private static final String PRODUCT_PATH = "/p/klimasplitgeraet-midea-portasplit-12-000-btu-105-m-weiss/12356554/";
+    private static final String PRODUCT_URL = "https://www.hornbach.de" + PRODUCT_PATH;
     private static final Pattern ARTICLE_COUNT = Pattern.compile("\"articleCount\":\\s*(\\d+)");
 
     /** A single CloakBrowser search fetch is reused by check() + checkOnline() within one run. */
@@ -102,8 +110,11 @@ public class HornbachStockClient implements ChainStockClient {
         if (cached != null && System.currentTimeMillis() - cachedListingAt < LISTING_TTL_MS) {
             return cached;
         }
+        // One CloakBrowser pass fetches both the search listing (article count) and the concrete PDP
+        // (does the article page still exist), reusing the same cf_clearance/fingerprint.
         List<CloakBrowserClient.InPageResponse> res = cloak.behindCloudflare(SEED, SEARCH_URL,
-                List.of(new CloakBrowserClient.InPageReq("GET", SEARCH_PATH, Map.of("Accept", "text/html"))));
+                List.of(new CloakBrowserClient.InPageReq("GET", SEARCH_PATH, Map.of("Accept", "text/html")),
+                        new CloakBrowserClient.InPageReq("GET", PRODUCT_PATH, Map.of("Accept", "text/html"))));
         String html = res.isEmpty() ? null : res.get(0).body();
         if (html == null || html.isBlank()) {
             errors.add("Hornbach: Suchseite nicht erreichbar");
@@ -115,9 +126,24 @@ public class HornbachStockClient implements ChainStockClient {
         if (m.find()) {
             articleCount = Integer.parseInt(m.group(1));
         }
-        boolean listed = articleCount > 0;
+
+        // The article page itself: Hornbach serves a soft 404 (HTTP 200 + "Seite nicht gefunden") for a
+        // delisted item, so check both the status and the page body.
+        CloakBrowserClient.InPageResponse pdp = res.size() > 1 ? res.get(1) : null;
+        boolean pdpGone = pdp == null || ChainJsonLd.isGoneStatus(pdp.status())
+                || ChainJsonLd.isGonePage(pdp.body());
+
         String note;
-        if (listed) {
+        if (pdpGone) {
+            // "nicht gelistet" drives the dashboard's "Artikelseite gibt es nicht mehr" warning.
+            note = "Artikelseite nicht mehr erreichbar - bei Hornbach nicht gelistet";
+            if (articleCount > 0) {
+                jobLog.warn("Hornbach: PortaSplit-Artikelseite ist 404, Suche zeigt aber {} Treffer - evtl. unter neuer URL relistet",
+                        articleCount);
+            } else {
+                jobLog.info("Hornbach: Midea PortaSplit nicht mehr gelistet (Artikelseite 404)");
+            }
+        } else if (articleCount > 0) {
             note = "bei Hornbach wieder gelistet (" + articleCount + " Treffer) - Markt-Bestand prüfen";
             jobLog.warn("Hornbach: Midea PortaSplit ist WIEDER GELISTET ({} Treffer) - per-Markt-Worker ergänzen!",
                     articleCount);
@@ -134,7 +160,7 @@ public class HornbachStockClient implements ChainStockClient {
     /** Listing watcher result. Availability stays false (listed ≠ in stock); the note carries the state. */
     private record Listing(String note) {
         AvailabilitySnapshot toSnapshot() {
-            return new AvailabilitySnapshot(true, true, false, 0, null, SEARCH_URL,
+            return new AvailabilitySnapshot(true, true, false, 0, null, PRODUCT_URL,
                     System.currentTimeMillis(), note);
         }
     }

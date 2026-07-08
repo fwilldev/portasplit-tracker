@@ -65,6 +65,37 @@ final class ChainHttp {
         throw new IllegalStateException("Zu viele Redirects für " + url);
     }
 
+    /**
+     * GETs {@code url} following up to 5 redirects and returns the final HTTP status, without throwing on
+     * 4xx/5xx and without keeping the body. Used to probe whether a product page still exists: a delisted
+     * PDP answers 404/410 (or a live short link redirects to its slug and answers 200). Returns {@code -1}
+     * if the status could not be determined (too many redirects / network error surfaces as an exception).
+     */
+    static int statusOf(RestClient rc, String url) {
+        String current = url;
+        for (int hop = 0; hop < 5; hop++) {
+            ResponseEntity<Void> resp = rc.get()
+                    .uri(URI.create(current))
+                    .header("User-Agent", ChainStockClient.BROWSER_UA)
+                    .header("Accept-Language", "de-DE,de;q=0.9,en;q=0.5")
+                    .header("Accept", "text/html,application/xhtml+xml")
+                    .retrieve()
+                    .onStatus(status -> true, (request, response) -> { })
+                    .toBodilessEntity();
+            if (resp.getStatusCode().is3xxRedirection()) {
+                URI location = resp.getHeaders().getLocation();
+                if (location == null) {
+                    break;
+                }
+                current = location.isAbsolute() ? location.toString()
+                        : URI.create(current).resolve(location).toString();
+                continue;
+            }
+            return resp.getStatusCode().value();
+        }
+        return -1;
+    }
+
     static String postJson(RestClient rc, String url, String jsonBody) {
         byte[] body = rc.post()
                 .uri(URI.create(url))

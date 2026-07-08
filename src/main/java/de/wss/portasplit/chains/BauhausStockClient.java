@@ -249,7 +249,17 @@ public class BauhausStockClient implements ChainStockClient {
             String item = e.getValue();
             String url = String.format(PRODUCT_URL, item);
             try {
-                List<String> blocks = jsonLdBlocks(cloak.fetchFingerprinted(SEED, url, ChainJsonLd.LD_EXTRACT_JS));
+                Map<String, Object> data = cloak.fetchFingerprinted(SEED, url, ChainJsonLd.LD_OR_GONE_JS);
+                // A delisted bauhaus.info PDP renders a "…hat nicht funktioniert" page with no JSON-LD, so
+                // treat the not-found flag as a definitive "article page gone" rather than a failed render.
+                if (data != null && Boolean.TRUE.equals(data.get("gone"))) {
+                    jobLog.info("Bauhaus: Artikelseite für {} nicht mehr erreichbar", product.displayName());
+                    readings.add(new ChainReading(onlineShop.getId(), product, new AvailabilitySnapshot(
+                            true, true, false, null, null, url, System.currentTimeMillis(),
+                            "online " + ChainJsonLd.NOT_LISTED_MARK)));
+                    continue;
+                }
+                List<String> blocks = jsonLdBlocks(data);
                 if (blocks == null) {
                     readings.add(new ChainReading(onlineShop.getId(), product, AvailabilitySnapshot.notObserved()));
                     continue;

@@ -37,6 +37,41 @@ final class ChainJsonLd {
                     + "catch(e){return JSON.stringify({ready:false,ld:[]});}})()";
 
     /**
+     * Like {@link #LD_EXTRACT_JS} but also flags a "gone" (delisted / not-found) page. A delisted PDP on a
+     * JS storefront (Bauhaus, Hornbach) carries <em>no</em> JSON-LD, so {@code LD_EXTRACT_JS} never turns
+     * {@code ready} true and the fetch times out - indistinguishable from a transient render failure.
+     * Here {@code gone} is true when the title/H1 shows a not-found page, and it also flips {@code ready}
+     * so the poll returns promptly instead of waiting out the timeout. Callers treat {@code gone} as a
+     * definitive "article page no longer exists" (→ {@link #NOT_LISTED_MARK}).
+     */
+    static final String LD_OR_GONE_JS =
+            "(function(){try{var n=document.querySelectorAll('script[type=\"application/ld+json\"]');"
+                    + "var a=[];for(var i=0;i<n.length;i++){a.push(n[i].textContent);}"
+                    + "var t=((document.title||'')+' '+((document.querySelector('h1')||{}).textContent||'')).toLowerCase();"
+                    + "var gone=/nicht gefunden|nicht funktioniert|kann nicht angezeigt werden|seite nicht/.test(t);"
+                    + "return JSON.stringify({ready:a.length>0||gone,ld:a,gone:gone});}"
+                    + "catch(e){return JSON.stringify({ready:false,ld:[],gone:false});}})()";
+
+    /** Whether an HTTP status marks a gone / delisted product page (hard 404 or 410 Gone). */
+    static boolean isGoneStatus(int status) {
+        return status == 404 || status == 410;
+    }
+
+    /**
+     * Whether a fetched HTML body is a chain's soft "not found" page rather than a real PDP. Some
+     * storefronts (Hornbach) answer 200 for a delisted article but render a "Seite nicht gefunden" page
+     * with no product data, so status alone is not enough.
+     */
+    static boolean isGonePage(String html) {
+        if (html == null || html.isBlank()) {
+            return false;
+        }
+        String lower = html.toLowerCase();
+        return lower.contains("nicht gefunden") || lower.contains("nicht funktioniert")
+                || lower.contains("kann nicht angezeigt werden");
+    }
+
+    /**
      * Substring shared by every "the product page loaded but carries no purchasable offer" note - i.e.
      * the article is delisted / its PDP is gone (a delisted PDP answers 404 with a page that has no
      * {@code Offer}). Chains word it slightly differently ("online nicht gelistet", "bei Hornbach nicht
