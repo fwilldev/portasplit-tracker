@@ -199,6 +199,19 @@ docker compose up -d --build
 Das baut Frontend + Backend, startet **cloakbrowser** und **app**. Der erste Build dauert länger
 (Maven-Deps + Node-Download im Image).
 
+💡 **Alternative ohne lokalen Build:** Es gibt ein von GitHub Actions vorgebautes Image für
+`linux/amd64` **und** `linux/arm64` unter `ghcr.io/fwilldev/portasplit-tracker` (Tag `latest`). Wenn
+kein lokaler Build gewünscht ist (z. B. schwacher Server, kein JDK/Node nötig), ersetze in
+`docker-compose.yml` beim `app`-Service `build: .` durch
+`image: ghcr.io/fwilldev/portasplit-tracker:latest` und starte stattdessen:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+CloakBrowser bleibt in beiden Fällen ein separater Container und wird mitgestartet.
+
 ✅ **Prüfen:**
 
 ```bash

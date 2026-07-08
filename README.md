@@ -41,6 +41,27 @@ docker compose up -d --build
 Startet die App **und** den CloakBrowser. Dashboard danach
 unter **http://localhost:8080** verfügbar.
 
+#### Ohne lokalen Build (vorgebautes Image)
+
+Bei jedem Push auf `main` baut GitHub Actions automatisch ein Image für `linux/amd64` **und**
+`linux/arm64` und veröffentlicht es nach `ghcr.io/fwilldev/portasplit-tracker` (Tags: `latest`,
+Branch-/Versions-Tags und ein Datums-Tag). So sparst du dir den lokalen Maven-/Node-Build. Ersetze
+dazu in `docker-compose.yml` beim `app`-Service die Zeile `build: .` durch:
+
+```yaml
+    image: ghcr.io/fwilldev/portasplit-tracker:latest
+```
+
+und starte dann ohne `--build`:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+CloakBrowser bleibt ein eigenständiger Container und wird von Compose weiterhin mitgestartet — nur
+der Build der App entfällt.
+
 ### Lokal mit Maven
 
 ```bash
