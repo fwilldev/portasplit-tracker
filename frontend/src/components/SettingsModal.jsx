@@ -4,7 +4,9 @@ import { Telegram, Branch, Check, Alert, MapPin, Clock, Search, Trash, ExternalL
 
 // A toggle row: label + description on the left, an iOS-style switch on the right.
 function Switch({ checked, disabled, onChange, accent = 'emerald' }) {
-  const on = accent === 'sky' ? 'peer-checked:bg-sky-500' : 'peer-checked:bg-emerald-500';
+  const on = accent === 'sky' ? 'peer-checked:bg-sky-500'
+    : accent === 'amber' ? 'peer-checked:bg-amber-500'
+    : 'peer-checked:bg-emerald-500';
   return (
     <label className={`relative inline-flex shrink-0 ${disabled ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}>
       <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
@@ -199,6 +201,21 @@ export default function SettingsModal({
     }
   };
 
+  const setNotifyCallOnly = async (value) => {
+    setNotifBusy(true);
+    setNotif((n) => ({ ...n, notifyCallOnly: value })); // optimistic
+    try {
+      const r = await api('/api/settings/notifications', { method: 'PUT', body: JSON.stringify({ notifyCallOnly: value }) });
+      setNotif(r);
+      toast(`Telefonisch-reservierbar-Alarme ${value ? 'aktiviert' : 'deaktiviert'}`, 'info');
+    } catch (e) {
+      setNotif((n) => ({ ...n, notifyCallOnly: !value }));
+      toast('Speichern fehlgeschlagen: ' + e.message, 'error');
+    } finally {
+      setNotifBusy(false);
+    }
+  };
+
   const removeSubscriber = async (chatId) => {
     setSubBusy(chatId);
     try {
@@ -315,6 +332,13 @@ export default function SettingsModal({
                   <p className="text-xs text-slate-400">Aus = es werden keine Telegram-Alarme verschickt.</p>
                 </div>
                 <Switch checked={notifyOn} disabled={notifBusy || notif === null} onChange={setTelegramNotify} />
+              </div>
+              <div className="flex items-center justify-between gap-4 px-3.5 py-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-slate-800">Auch „nur telefonisch reservierbar"</div>
+                  <p className="text-xs text-slate-400">Alarm auch bei Marktbestand, der nicht online reservierbar ist (aktuell bei Bauhaus der Fall).</p>
+                </div>
+                <Switch checked={!!notif?.notifyCallOnly} disabled={notifBusy || notif === null || !notifyOn} onChange={setNotifyCallOnly} accent="amber" />
               </div>
               <div className="flex items-center justify-between gap-4 px-3.5 py-3">
                 <div className="min-w-0">

@@ -94,6 +94,10 @@ public class AvailabilityReconciler {
 
         Integer prevStock = state.getCurrentStock();
         boolean prevAvailable = state.isAvailable();
+        // Captured before the reserve-issue note is (possibly) overwritten below, so we can detect the
+        // transition into the "pickup stock, but only reservable by phone/in person" state.
+        String prevReserveIssueNote = state.getReserveIssueNote();
+        boolean prevCallOnly = isCallOnly(prevAvailable, prevReserveIssueNote, prevStock);
 
         Integer newStock = snap.stock();
         boolean newAvailable = snap.available();
@@ -155,7 +159,27 @@ public class AvailabilityReconciler {
             availabilityRepository.save(state);
         }
 
+        // Independent of the available→available path above: a branch that just showed pickup stock it
+        // can't reserve online (available stays false) fires an opt-in "call the store" alert on the
+        // edge into that state, gated by the same Umkreissuche radius. Only on the transition, so it
+        // does not re-fire every poll while the article sits in the call-only state.
+        boolean newCallOnly = isCallOnly(newAvailable, state.getReserveIssueNote(), newStock);
+        if (!prevCallOnly && newCallOnly
+                && settings.callOnlyNotifyEnabled() && radiusService.inScope(shop)) {
+            notificationService.notifyCallOnly(
+                    shop, product, newStock, price, state.getUrl(), state.getReserveIssueNote());
+        }
+
         return newAvailable;
+    }
+
+    /**
+     * A (shop, product) is "call-only" when it has pickup stock but is not reservable online: the
+     * store carries it, yet the only way to secure it is by phone/in person. Mirrors the dashboard's
+     * amber "Verfügbar, nicht reservierbar" badge (see {@code ShopTable.jsx}).
+     */
+    private static boolean isCallOnly(boolean available, String reserveIssueNote, Integer stock) {
+        return !available && reserveIssueNote != null && stock != null && stock > 0;
     }
 
     /**

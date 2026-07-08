@@ -27,6 +27,12 @@ public class SettingsService {
     public static final String WORKER_ENABLED_PREFIX = "worker.enabled.";
     /** Runtime master switch for sending Telegram notifications (independent of the static config). */
     public static final String TELEGRAM_NOTIFY = "telegram.notify";
+    /**
+     * Opt-in switch for alerting on the "in-store stock exists but online reservation is disabled"
+     * case (e.g. Bauhaus freight items you can only reserve by phone/in person). Default off, so the
+     * standard behaviour stays "only notify on genuinely online-reservable stock".
+     */
+    public static final String TELEGRAM_NOTIFY_CALL_ONLY = "telegram.notifyCallOnly";
     /** Highest processed Telegram {@code update_id} + 1 — the getUpdates poll offset (survives restarts). */
     public static final String TELEGRAM_UPDATES_OFFSET = "telegram.updates.offset";
 
@@ -90,6 +96,14 @@ public class SettingsService {
     /** Whether the toom auto-reserve feature is switched on (dashboard). Defaults to off. */
     public boolean toomAutoReserveEnabled() {
         return get(TOOM_AUTORESERVE_ENABLED).map(Boolean::parseBoolean).orElse(false);
+    }
+
+    /**
+     * Whether to also alert when a branch has pickup stock that cannot be reserved online (only by
+     * phone/in person). Opt-in; defaults to off so alerts stay limited to online-reservable stock.
+     */
+    public boolean callOnlyNotifyEnabled() {
+        return get(TELEGRAM_NOTIFY_CALL_ONLY).map(Boolean::parseBoolean).orElse(false);
     }
 
     @Transactional

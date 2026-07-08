@@ -64,6 +64,40 @@ public class NotificationService {
     }
 
     /**
+     * Fired when a product appears in a branch with pickup stock that cannot be reserved online — the
+     * only way to secure it is by phone/in person (e.g. Bauhaus freight items). Distinct from
+     * {@link #notifyAvailable}: opt-in via {@code SettingsService.callOnlyNotifyEnabled()}.
+     */
+    public void notifyCallOnly(Shop shop, Product product, Integer stock, BigDecimal price,
+                               String url, String reserveIssueNote) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("🟡 <b>").append(TelegramService.escape(product.displayName()))
+                .append(" im Markt vorrätig</b>\n");
+        sb.append("<i>nur telefonisch / vor Ort reservierbar — online nicht möglich</i>\n\n");
+        sb.append("🏬 ").append(TelegramService.escape(shop.getName())).append('\n');
+        if (StringUtils.hasText(shop.getCity())) {
+            sb.append("📍 ")
+                    .append(TelegramService.escape(joinAddress(shop)))
+                    .append('\n');
+        }
+        if (stock != null) {
+            sb.append("📦 Bestand: ").append(stock).append('\n');
+        }
+        if (StringUtils.hasText(reserveIssueNote)) {
+            sb.append("ℹ️ ").append(TelegramService.escape(reserveIssueNote)).append('\n');
+        }
+        if (price != null) {
+            sb.append("💶 Preis: ").append(TelegramService.escape(formatEur(price))).append('\n');
+        }
+        if (StringUtils.hasText(url)) {
+            sb.append("🔗 <a href=\"").append(TelegramService.escape(url)).append("\">Zum Artikel</a>");
+        }
+        boolean sent = telegram.sendNotification(sb.toString());
+        log.info("Call-only notification for {} / {} (stock={}): telegram sent={}",
+                shop.getName(), product.displayName(), stock, sent);
+    }
+
+    /**
      * Fired when a freshly-posted kleinanzeigen offer is seen for the first time.
      *
      * @return whether Telegram accepted the message. The caller must only mark the offer as

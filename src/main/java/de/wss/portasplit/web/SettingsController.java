@@ -91,7 +91,8 @@ public class SettingsController {
 
     @GetMapping("/notifications")
     public NotificationSettingsDto getNotifications() {
-        return new NotificationSettingsDto(telegram.isConfigured(), settings.telegramNotifyEnabled());
+        return new NotificationSettingsDto(telegram.isConfigured(),
+                settings.telegramNotifyEnabled(), settings.callOnlyNotifyEnabled());
     }
 
     @PutMapping("/notifications")
@@ -99,7 +100,11 @@ public class SettingsController {
         if (req.telegramNotify() != null) {
             settings.putBool(SettingsService.TELEGRAM_NOTIFY, req.telegramNotify());
         }
-        return new NotificationSettingsDto(telegram.isConfigured(), settings.telegramNotifyEnabled());
+        if (req.notifyCallOnly() != null) {
+            settings.putBool(SettingsService.TELEGRAM_NOTIFY_CALL_ONLY, req.notifyCallOnly());
+        }
+        return new NotificationSettingsDto(telegram.isConfigured(),
+                settings.telegramNotifyEnabled(), settings.callOnlyNotifyEnabled());
     }
 
     /** The Telegram recipients (pending + confirmed) plus a shareable opt-in bot link. */
