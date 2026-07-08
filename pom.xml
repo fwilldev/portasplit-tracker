@@ -13,7 +13,7 @@
 
     <groupId>de.wss</groupId>
     <artifactId>portasplit-tracker</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.1</version>
     <name>portasplit-tracker</name>
     <description>Tracks availability of the Midea PortaSplit and PortaSplit Cool across configured shops (per-chain checkers, Amazon and Lidl).</description>
 

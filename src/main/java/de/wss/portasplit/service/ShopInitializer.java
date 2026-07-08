@@ -45,6 +45,18 @@ public class ShopInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        // The scraped sources (Amazon, Lidl) are configured entirely via application.yml - their on/off
+        // and product URLs live there, NOT in shops.seed.json (that file is only brick-and-mortar
+        // Baumarkt branches). But each watcher still needs a shop row to persist its result into, so we
+        // guarantee those rows exist here, independent of the file-based seed and its merge toggle.
+        // They are seeded regardless of whether the checker is currently enabled (a source can be
+        // switched on at runtime from the dashboard); gating is owned by the job queue, not by
+        // withholding the row. mergeIfMissing never overwrites an existing row, so dashboard edits win.
+        int scraped = shopService.mergeIfMissing(builtinScrapedShops());
+        if (scraped > 0) {
+            log.info("Ensured {} built-in scraped shop row(s) (Amazon/Lidl)", scraped);
+        }
+
         if (!props.shops().mergeOnStartup()) {
             log.info("Shop merge on startup disabled (app.shops.merge-on-startup=false)");
             return;
@@ -73,6 +85,30 @@ public class ShopInitializer implements ApplicationRunner {
         int enriched = shopService.backfillCoordinates(incoming);
         log.info("Shop merge complete: {} candidate(s), {} newly inserted, {} enriched with coordinates",
                 incoming.size(), inserted, enriched);
+    }
+
+    /**
+     * The built-in online-only shop rows for the scraped sources (Amazon, Lidl). These are not branch
+     * shops and deliberately do not live in {@code shops.seed.json}; they exist only so the Amazon/Lidl
+     * watchers have a target row. matchName mirrors the historical rows so existing DBs are not
+     * duplicated.
+     */
+    private List<Shop> builtinScrapedShops() {
+        return List.of(
+                scrapedShop("Amazon", "Amazon.de", "amazon", ShopSource.AMAZON),
+                scrapedShop("Lidl", "Lidl.de", "lidl", ShopSource.LIDL)
+        );
+    }
+
+    private Shop scrapedShop(String chain, String name, String matchName, ShopSource source) {
+        Shop shop = new Shop();
+        shop.setChain(chain);
+        shop.setName(name);
+        shop.setMatchName(matchName);
+        shop.setOnlineOnly(true);
+        shop.setSource(source);
+        shop.setEnabled(true);
+        return shop;
     }
 
     private List<Shop> load(Resource resource, String label) {
