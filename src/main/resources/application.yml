@@ -64,8 +64,8 @@ app:
     cdp-url: ${CLOAKBROWSER_CDP_URL:http://localhost:9222}
     timeout: 45s
   amazon:
-    # Requires a running CloakBrowser CDP server. Off by default.
-    enabled: ${AMAZON_ENABLED:false}
+    # Requires a running CloakBrowser CDP server. On by default; set AMAZON_ENABLED=false to disable.
+    enabled: ${AMAZON_ENABLED:true}
     # A product counts as available only if it ships within this many days (guards "ships in weeks").
     max-delivery-days: ${AMAZON_MAX_DELIVERY_DAYS:5}
     # Prime is shown/preferred; set true to require fast/Prime shipping for "available".
@@ -78,8 +78,8 @@ app:
     max-interval-ms: 75000      # max 75 seconds
     initial-delay-ms: 35000     # first Amazon poll 35s after startup
   lidl:
-    # Lidl sells only the PortaSplit Cool. Requires the CloakBrowser. Off by default.
-    enabled: ${LIDL_ENABLED:false}
+    # Lidl sells only the PortaSplit Cool. Requires the CloakBrowser. On by default; set LIDL_ENABLED=false to disable.
+    enabled: ${LIDL_ENABLED:true}
     url: ${LIDL_URL:https://www.lidl.de/p/midea-porta-split-cool/p100407988}
     min-interval-ms: 45000      # min 45 seconds
     max-interval-ms: 75000      # max 75 seconds
