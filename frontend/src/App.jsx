@@ -11,6 +11,7 @@ import JobsPanel from './components/JobsPanel.jsx';
 import Logbook from './components/Logbook.jsx';
 import { jobMeta } from './jobs.jsx';
 import { BrandLogo } from './logos.jsx';
+import MapView from './components/MapView.jsx';
 
 // Chains hidden from the dashboard (still checked on the backend, see JobsPanel.HIDDEN_SOURCES).
 const HIDDEN_CHAINS = new Set(['Hagebau']);
@@ -204,7 +205,7 @@ export default function App() {
   const visibleShops = useMemo(() => (overview?.shops || []).filter((s) => !HIDDEN_CHAINS.has(s.chain)), [overview]);
   const chains = useMemo(() => [...new Set(visibleShops.map((s) => s.chain))].sort(), [visibleShops]);
   const filteredShops = useMemo(() => {
-    let list = visibleShops;cd
+    let list = visibleShops;
 
     // Existing filters
     const q = search.trim().toLowerCase();
@@ -353,6 +354,26 @@ export default function App() {
             </label>
           </div>
         )}
+        
+        {/* NEW: Map View - shows filtered shops */}
+        {overview?.radius?.active && filteredShops.length > 0 && (
+          <section className="card rounded-2xl ring-1 ring-slate-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                📍 Verfügbare Filialen auf der Karte
+              </h2>
+              <span className="text-xs text-slate-500">
+                {filteredShops.length} Shops im Umkreis
+              </span>
+            </div>
+            <MapView 
+              shops={filteredShops} 
+              radiusData={overview?.radius} 
+            />
+          </section>
+        )}
+
+
 
         <ShopTable
           shops={filteredShops} loading={loading} hasOverview={!!overview}
