@@ -11,6 +11,7 @@ import JobsPanel from './components/JobsPanel.jsx';
 import Logbook from './components/Logbook.jsx';
 import { jobMeta } from './jobs.jsx';
 import { BrandLogo } from './logos.jsx';
+import MapView from './components/MapView.jsx';
 
 // Chains hidden from the dashboard (still checked on the backend, see JobsPanel.HIDDEN_SOURCES).
 const HIDDEN_CHAINS = new Set(['Hagebau']);
@@ -34,9 +35,16 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [chainFilter, setChainFilter] = useState('');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  
+
+// === NEW SORTING STATE ===
+  const [sortBy, setSortBy] = useState('distance'); // 'distance', 'name', or 'updated'
+  const [sortDir, setSortDir] = useState('asc');    // 'asc' or 'desc'
+  
   // "Alle anzeigen" bypasses the radius filter (fetches every shop). Mirrored to a ref so the periodic
   // overview poll reads the current value without re-creating loadOverview.
   const [showAll, setShowAll] = useState(false);
+
   const showAllRef = useRef(showAll);
   showAllRef.current = showAll;
 
@@ -198,12 +206,35 @@ export default function App() {
   const chains = useMemo(() => [...new Set(visibleShops.map((s) => s.chain))].sort(), [visibleShops]);
   const filteredShops = useMemo(() => {
     let list = visibleShops;
+
+    // Existing filters
     const q = search.trim().toLowerCase();
     if (q) list = list.filter((s) => [s.name, s.city, s.plz, s.chain].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
     if (chainFilter) list = list.filter((s) => s.chain === chainFilter);
     if (onlyAvailable) list = list.filter((s) => s.anyAvailable);
+
+    // === NEW: SORTING ===
+    list = [...list].sort((a, b) => {
+      let cmp = 0;
+      
+      if (sortBy === 'name') {
+        cmp = (a.name || '').localeCompare(b.name || '');
+      } else if (sortBy === 'distance') {
+        // Shops without distance (online-only, etc.) go to the end
+        const da = a.distanceKm ?? Infinity;
+        const db = b.distanceKm ?? Infinity;
+        cmp = da - db;
+      } else if (sortBy === 'updated') {
+        const ta = new Date(a.lastCheckedAt || 0).getTime();
+        const tb = new Date(b.lastCheckedAt || 0).getTime();
+        cmp = ta - tb;
+      }
+      
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
     return list;
-  }, [visibleShops, search, chainFilter, onlyAvailable]);
+  }, [visibleShops, search, chainFilter, onlyAvailable, sortBy, sortDir]);
 
   // The two headline numbers: in how many shops each product is currently in stock.
   const availFor = (prod) => visibleShops
@@ -275,6 +306,36 @@ export default function App() {
             <span className="relative h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-emerald-500 after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-4" />
             Nur verfügbare
           </label>
+          {/* === NEW: SORT CONTROLS === */}
+          <div className="flex items-center gap-2 ml-4">
+            <span className="text-xs text-slate-500 whitespace-nowrap">Sortieren:</span>
+            <button 
+              onClick={() => { 
+                if (sortBy === 'name') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                else { setSortBy('name'); setSortDir('asc'); }
+              }} 
+              className={`px-3 py-1 text-xs rounded-full ring-1 transition ${sortBy === 'name' ? 'bg-brand-500 text-white ring-brand-500' : 'bg-white ring-slate-200 hover:bg-slate-50'}`}>
+              Shop {sortBy === 'name' && (sortDir === 'asc' ? '↑' : '↓')}
+            </button>
+            
+            <button 
+              onClick={() => { 
+                if (sortBy === 'distance') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                else { setSortBy('distance'); setSortDir('asc'); }
+              }} 
+              className={`px-3 py-1 text-xs rounded-full ring-1 transition ${sortBy === 'distance' ? 'bg-brand-500 text-white ring-brand-500' : 'bg-white ring-slate-200 hover:bg-slate-50'}`}>
+              Entfernung {sortBy === 'distance' && (sortDir === 'asc' ? '↑' : '↓')}
+            </button>
+            
+            <button 
+              onClick={() => { 
+                if (sortBy === 'updated') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                else { setSortBy('updated'); setSortDir('desc'); }
+              }} 
+              className={`px-3 py-1 text-xs rounded-full ring-1 transition ${sortBy === 'updated' ? 'bg-brand-500 text-white ring-brand-500' : 'bg-white ring-slate-200 hover:bg-slate-50'}`}>
+              Aktualisiert {sortBy === 'updated' && (sortDir === 'asc' ? '↑' : '↓')}
+            </button>
+          </div>  
         </section>
 
         {overview?.radius?.active && (
@@ -293,6 +354,26 @@ export default function App() {
             </label>
           </div>
         )}
+        
+        {/* NEW: Map View - shows filtered shops */}
+        {overview?.radius?.active && filteredShops.length > 0 && (
+          <section className="card rounded-2xl ring-1 ring-slate-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                📍 Verfügbare Filialen auf der Karte
+              </h2>
+              <span className="text-xs text-slate-500">
+                {filteredShops.length} Shops im Umkreis
+              </span>
+            </div>
+            <MapView 
+              shops={filteredShops} 
+              radiusData={overview?.radius} 
+            />
+          </section>
+        )}
+
+
 
         <ShopTable
           shops={filteredShops} loading={loading} hasOverview={!!overview}
