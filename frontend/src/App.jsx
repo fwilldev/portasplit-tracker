@@ -35,16 +35,11 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [chainFilter, setChainFilter] = useState('');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
-  
-
-// === NEW SORTING STATE ===
   const [sortBy, setSortBy] = useState('distance'); // 'distance', 'name', or 'updated'
   const [sortDir, setSortDir] = useState('asc');    // 'asc' or 'desc'
-  
   // "Alle anzeigen" bypasses the radius filter (fetches every shop). Mirrored to a ref so the periodic
   // overview poll reads the current value without re-creating loadOverview.
   const [showAll, setShowAll] = useState(false);
-
   const showAllRef = useRef(showAll);
   showAllRef.current = showAll;
 
@@ -207,16 +202,17 @@ export default function App() {
   const filteredShops = useMemo(() => {
     let list = visibleShops;
 
-    // Existing filters
     const q = search.trim().toLowerCase();
     if (q) list = list.filter((s) => [s.name, s.city, s.plz, s.chain].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
     if (chainFilter) list = list.filter((s) => s.chain === chainFilter);
     if (onlyAvailable) list = list.filter((s) => s.anyAvailable);
 
-    // === NEW: SORTING ===
+    // Sorting. The shop object has no timestamp of its own, so "updated" uses the most recent
+    // per-product check on that shop.
+    const updatedAt = (s) => (s.products || [])
+      .reduce((max, p) => Math.max(max, p.lastCheckedAt ? new Date(p.lastCheckedAt).getTime() : 0), 0);
     list = [...list].sort((a, b) => {
       let cmp = 0;
-      
       if (sortBy === 'name') {
         cmp = (a.name || '').localeCompare(b.name || '');
       } else if (sortBy === 'distance') {
@@ -225,11 +221,8 @@ export default function App() {
         const db = b.distanceKm ?? Infinity;
         cmp = da - db;
       } else if (sortBy === 'updated') {
-        const ta = new Date(a.lastCheckedAt || 0).getTime();
-        const tb = new Date(b.lastCheckedAt || 0).getTime();
-        cmp = ta - tb;
+        cmp = updatedAt(a) - updatedAt(b);
       }
-      
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
@@ -306,7 +299,6 @@ export default function App() {
             <span className="relative h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-emerald-500 after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-4" />
             Nur verfügbare
           </label>
-          {/* === NEW: SORT CONTROLS === */}
           <div className="flex items-center gap-2 ml-4">
             <span className="text-xs text-slate-500 whitespace-nowrap">Sortieren:</span>
             <button 
@@ -335,7 +327,7 @@ export default function App() {
               className={`px-3 py-1 text-xs rounded-full ring-1 transition ${sortBy === 'updated' ? 'bg-brand-500 text-white ring-brand-500' : 'bg-white ring-slate-200 hover:bg-slate-50'}`}>
               Aktualisiert {sortBy === 'updated' && (sortDir === 'asc' ? '↑' : '↓')}
             </button>
-          </div>  
+          </div>
         </section>
 
         {overview?.radius?.active && (
@@ -354,8 +346,8 @@ export default function App() {
             </label>
           </div>
         )}
-        
-        {/* NEW: Map View - shows filtered shops */}
+
+        {/* Map view — shows the filtered shops within the radius */}
         {overview?.radius?.active && filteredShops.length > 0 && (
           <section className="card rounded-2xl ring-1 ring-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
@@ -366,14 +358,9 @@ export default function App() {
                 {filteredShops.length} Shops im Umkreis
               </span>
             </div>
-            <MapView 
-              shops={filteredShops} 
-              radiusData={overview?.radius} 
-            />
+            <MapView shops={filteredShops} radiusData={overview?.radius} />
           </section>
         )}
-
-
 
         <ShopTable
           shops={filteredShops} loading={loading} hasOverview={!!overview}

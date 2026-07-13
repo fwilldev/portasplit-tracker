@@ -37,6 +37,3 @@ local.properties
 
 # Local scrape/test data dump (not source, not meant for the public repo)
 /mock.json
-package.json
-package-lock.json
-frontend/src/plz-coords.json

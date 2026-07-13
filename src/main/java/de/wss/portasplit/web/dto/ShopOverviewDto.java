@@ -16,6 +16,9 @@ public record ShopOverviewDto(
         boolean anyAvailable,
         /** Distance (km) from the configured radius centre; null if no centre is set or no coordinates. */
         Double distanceKm,
+        /** Branch coordinates for the map; null for online shops or branches without geocoding. */
+        Double lat,
+        Double lon,
         List<ProductStatusDto> products
 ) {
 }

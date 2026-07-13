@@ -22,7 +22,7 @@ services:
     command: cloakserve --headless=false
     restart: unless-stopped
     ports:
-      - "8082:8080"               # the app listens here (shared network namespace)
+      - "8080:8080"               # the app listens here (shared network namespace)
       - "127.0.0.1:9222:9222"     # CDP, loopback only (optional host-side debugging)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9222/json/version"]
