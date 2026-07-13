@@ -128,7 +128,9 @@ public class DashboardService {
             shopDtos.add(new ShopOverviewDto(shop.getId(), shop.getChain(), shop.getName(),
                     shop.getCity(), shop.getPlz(), shop.getStreet(), shop.isOnlineOnly(),
                     shop.getSource().name(), shop.isEnabled(), anyAvailable,
-                    distanceKm == null ? null : Math.round(distanceKm * 10) / 10.0, products));
+                    distanceKm == null ? null : Math.round(distanceKm * 10) / 10.0,
+                    shop.isOnlineOnly() ? null : shop.getLat(),
+                    shop.isOnlineOnly() ? null : shop.getLon(), products));
         }
 
         SummaryDto summary = new SummaryDto(shops.size(), branchShops, onlineShops,

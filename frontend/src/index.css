@@ -1,4 +1,22 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Fix map z-index issues with modals */
+.leaflet-container {
+  z-index: 10;
+}
+
+.card {
+  z-index: 20;
+}
+
+/* Make sure modals stay on top */
+#root > div:last-child,
+.dialog,
+.modal {
+  z-index: 1000 !important;
+}
+
 
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
